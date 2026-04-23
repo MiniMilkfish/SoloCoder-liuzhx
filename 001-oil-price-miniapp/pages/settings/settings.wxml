@@ -1,0 +1,194 @@
+<view class="container">
+  <view class="switch-card card">
+    <view class="switch-row">
+      <view class="switch-info">
+        <text class="switch-title">加油提醒</text>
+        <text class="switch-desc">开启后，在油价变动时将收到提醒通知</text>
+      </view>
+      <switch 
+        checked="{{reminderEnabled}}" 
+        bindchange="onReminderSwitchChange"
+        color="#1976d2">
+      </switch>
+    </view>
+  </view>
+
+  <view class="settings-card card" wx:if="{{reminderEnabled}}">
+    <view class="section-header">
+      <text class="section-title">提醒方式</text>
+    </view>
+    
+    <radio-group bindchange="onReminderTypeChange">
+      <label class="radio-item">
+        <radio value="price_change" checked="{{reminderType === 'price_change'}}" color="#1976d2"/>
+        <view class="radio-content">
+          <text class="radio-title">油价变动提醒</text>
+          <text class="radio-desc">当油价涨跌超过设定阈值时提醒</text>
+        </view>
+      </label>
+      <label class="radio-item">
+        <radio value="daily_reminder" checked="{{reminderType === 'daily_reminder'}}" color="#1976d2"/>
+        <view class="radio-content">
+          <text class="radio-title">每日定时提醒</text>
+          <text class="radio-desc">在设定的时间点定时发送油价提醒</text>
+        </view>
+      </label>
+      <label class="radio-item">
+        <radio value="both" checked="{{reminderType === 'both'}}" color="#1976d2"/>
+        <view class="radio-content">
+          <text class="radio-title">两者都选</text>
+          <text class="radio-desc">同时开启油价变动提醒和每日定时提醒</text>
+        </view>
+      </label>
+    </radio-group>
+  </view>
+
+  <view class="settings-card card" wx:if="{{reminderEnabled}}">
+    <view class="section-header">
+      <text class="section-title">提醒时间</text>
+    </view>
+
+    <view class="setting-item" bindtap="showTimePicker">
+      <text class="setting-label">提醒时间</text>
+      <view class="setting-value-row">
+        <text class="setting-value">{{reminderTime}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="setting-item" bindtap="showDayPicker">
+      <text class="setting-label">提醒星期</text>
+      <view class="setting-value-row">
+        <text class="setting-value">{{selectedDays.join('、')}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="settings-card card" wx:if="{{reminderEnabled}}">
+    <view class="section-header">
+      <text class="section-title">关注油号</text>
+    </view>
+
+    <view class="oil-type-list">
+      <view 
+        wx:for="{{oilTypeList}}" 
+        wx:key="code" 
+        class="oil-type-item {{selectedOilTypes.indexOf(item.code) > -1 ? 'active' : ''}}"
+        bindtap="onOilTypeChange"
+        data-index="{{index}}">
+        <text class="oil-type-name">{{item.name}}</text>
+        <view class="check-icon" wx:if="{{selectedOilTypes.indexOf(item.code) > -1}}">
+          <text class="icon">✓</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="settings-card card" wx:if="{{reminderEnabled && (reminderType === 'price_change' || reminderType === 'both')}}">
+    <view class="section-header">
+      <text class="section-title">变动阈值</text>
+    </view>
+
+    <view class="threshold-section">
+      <view class="threshold-row">
+        <text class="threshold-label">油价涨跌超过</text>
+        <view class="threshold-input-wrapper">
+          <input 
+            type="digit" 
+            value="{{priceThreshold}}" 
+            bindinput="onThresholdInput"
+            bindblur="onThresholdBlur"
+            class="threshold-input">
+          </input>
+        </view>
+        <text class="threshold-unit">元/升</text>
+      </view>
+      <text class="threshold-desc">当油价涨跌超过此值时发送提醒通知</text>
+    </view>
+  </view>
+
+  <view class="settings-card card" wx:if="{{reminderEnabled}}">
+    <view class="section-header">
+      <text class="section-title">调价提醒</text>
+    </view>
+
+    <view class="setting-item">
+      <view class="setting-info">
+        <text class="setting-label">调价前提醒</text>
+        <text class="setting-desc">在油价调整日前发送提醒</text>
+      </view>
+      <switch 
+        checked="{{notifyBeforeAdjustment}}" 
+        bindchange="onNotifyBeforeAdjustmentChange"
+        color="#1976d2">
+      </switch>
+    </view>
+
+    <view class="setting-item" wx:if="{{notifyBeforeAdjustment}}">
+      <text class="setting-label">提前提醒天数</text>
+      <view class="setting-value-row">
+        <picker 
+          mode="selector" 
+          range="{{['1天前', '2天前', '3天前']}}" 
+          value="{{adjustmentNotifyDays - 1}}"
+          bindchange="onAdjustmentDaysChange">
+          <view class="picker-wrapper">
+            <text class="setting-value">{{adjustmentNotifyDays}}天前</text>
+            <text class="arrow">›</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+
+  <view class="actions-card card">
+    <view class="action-item" bindtap="onTestReminder">
+      <text class="action-text test">测试提醒</text>
+    </view>
+    <view class="action-divider"></view>
+    <view class="action-item" bindtap="onClearAllSettings">
+      <text class="action-text clear">清除所有设置</text>
+    </view>
+  </view>
+
+  <view class="tips-card">
+    <text class="tips-text">💡 提示：消息提醒功能需要在微信设置中开启小程序通知权限</text>
+  </view>
+
+  <view class="picker-mask" wx:if="{{showTimePicker}}" bindtap="hideTimePicker"></view>
+  <view class="picker-container" wx:if="{{showTimePicker}}">
+    <view class="picker-header">
+      <text class="picker-cancel" bindtap="hideTimePicker">取消</text>
+      <text class="picker-title">选择时间</text>
+      <text class="picker-confirm" bindtap="hideTimePicker">确定</text>
+    </view>
+    <picker-view class="picker-view" value="{{timePickerValue}}" bindchange="onTimePickerChange">
+      <picker-view-column>
+        <view wx:for="{{24}}" wx:key="index" class="picker-item">{{String(index).padStart(2, '0')}}</view>
+      </picker-view-column>
+      <picker-view-column>
+        <view wx:for="{{60}}" wx:key="index" class="picker-item">{{String(index).padStart(2, '0')}}</view>
+      </picker-view-column>
+    </picker-view>
+  </view>
+
+  <view class="picker-mask" wx:if="{{showDayPicker}}" bindtap="hideDayPicker"></view>
+  <view class="picker-container" wx:if="{{showDayPicker}}">
+    <view class="picker-header">
+      <text class="picker-cancel" bindtap="hideDayPicker">取消</text>
+      <text class="picker-title">选择星期（点击切换）</text>
+      <text class="picker-confirm" bindtap="hideDayPicker">完成</text>
+    </view>
+    <view class="day-picker-content">
+      <view 
+        wx:for="{{['周日', '周一', '周二', '周三', '周四', '周五', '周六']}}" 
+        wx:key="index"
+        class="day-item {{reminderDays.indexOf(index) > -1 ? 'active' : ''}}"
+        bindtap="onDayPickerChange"
+        data-index="{{index}}">
+        <text class="day-name">{{item}}</text>
+      </view>
+    </view>
+  </view>
+</view>
