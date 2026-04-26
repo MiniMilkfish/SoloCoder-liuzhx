@@ -245,19 +245,9 @@ class SudokuService {
       }
     }
 
-    const pointingPair = this._findPointingPair(board, candidates)
-    if (pointingPair) {
-      return pointingPair
-    }
-
-    const boxLine = this._findBoxLineReduction(board, candidates)
-    if (boxLine) {
-      return boxLine
-    }
-
-    const nakedPair = this._findNakedPair(board, candidates)
-    if (nakedPair) {
-      return nakedPair
+    const advancedHint = this._findAdvancedEliminationHint(board, candidates, solution)
+    if (advancedHint) {
+      return advancedHint
     }
 
     for (let r = 0; r < 9; r++) {
@@ -269,6 +259,185 @@ class SudokuService {
             value: solution[r][c],
             technique: '基础排除法',
             reason: `第${r + 1}行、第${c + 1}列这个格子目前有 ${candidates[r][c].length} 个候选数：${candidates[r][c].join('、')}。通过进一步分析所在行、列和宫格中的数字，可以逐步排除不可能的候选数。建议先尝试使用笔记功能标记所有候选数。`,
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
+  _findAdvancedEliminationHint(board, candidates, solution) {
+    for (let num = 1; num <= 9; num++) {
+      for (let boxRow = 0; boxRow < 3; boxRow++) {
+        for (let boxCol = 0; boxCol < 3; boxCol++) {
+          const startRow = boxRow * 3
+          const startCol = boxCol * 3
+
+          const positions = []
+          for (let r = startRow; r < startRow + 3; r++) {
+            for (let c = startCol; c < startCol + 3; c++) {
+              if (board[r][c] === 0 && candidates[r][c].includes(num)) {
+                positions.push({ row: r, col: c })
+              }
+            }
+          }
+
+          if (positions.length >= 2 && positions.length <= 3) {
+            const sameRow = positions.every(p => p.row === positions[0].row)
+            const sameCol = positions.every(p => p.col === positions[0].col)
+
+            if (sameRow) {
+              const targetRow = positions[0].row
+              let canEliminate = false
+              for (let c = 0; c < 9; c++) {
+                if (board[targetRow][c] === 0 && candidates[targetRow][c].includes(num)) {
+                  const inBox = c >= startCol && c < startCol + 3
+                  if (!inBox) {
+                    canEliminate = true
+                    break
+                  }
+                }
+              }
+
+              if (canEliminate) {
+                const fillableCell = positions.find(p => solution[p.row][p.col] === num)
+                if (fillableCell && candidates[fillableCell.row][fillableCell.col].includes(num)) {
+                  const otherCandidates = candidates[fillableCell.row][fillableCell.col].filter(n => n !== num)
+                  return {
+                    row: fillableCell.row,
+                    col: fillableCell.col,
+                    value: num,
+                    technique: this.TECHNIQUES.POINTING_PAIR,
+                    reason: `观察第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格：数字 ${num} 的候选位置都在第${targetRow + 1}行。这意味着 ${num} 必然在这一行的这个宫格中，因此可以排除这一行其他宫格中的 ${num}。排除后，第${fillableCell.row + 1}行、第${fillableCell.col + 1}列只剩下 ${num} 这一个选择${otherCandidates.length > 0 ? '（已排除候选数：' + otherCandidates.join('、') + '）' : ''}。`,
+                  }
+                }
+              }
+            }
+
+            if (sameCol) {
+              const targetCol = positions[0].col
+              let canEliminate = false
+              for (let r = 0; r < 9; r++) {
+                if (board[r][targetCol] === 0 && candidates[r][targetCol].includes(num)) {
+                  const inBox = r >= startRow && r < startRow + 3
+                  if (!inBox) {
+                    canEliminate = true
+                    break
+                  }
+                }
+              }
+
+              if (canEliminate) {
+                const fillableCell = positions.find(p => solution[p.row][p.col] === num)
+                if (fillableCell && candidates[fillableCell.row][fillableCell.col].includes(num)) {
+                  const otherCandidates = candidates[fillableCell.row][fillableCell.col].filter(n => n !== num)
+                  return {
+                    row: fillableCell.row,
+                    col: fillableCell.col,
+                    value: num,
+                    technique: this.TECHNIQUES.POINTING_PAIR,
+                    reason: `观察第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格：数字 ${num} 的候选位置都在第${targetCol + 1}列。这意味着 ${num} 必然在这一列的这个宫格中，因此可以排除这一列其他宫格中的 ${num}。排除后，第${fillableCell.row + 1}行、第${fillableCell.col + 1}列只剩下 ${num} 这一个选择${otherCandidates.length > 0 ? '（已排除候选数：' + otherCandidates.join('、') + '）' : ''}。`,
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (let num = 1; num <= 9; num++) {
+      for (let r = 0; r < 9; r++) {
+        const positions = []
+        for (let c = 0; c < 9; c++) {
+          if (board[r][c] === 0 && candidates[r][c].includes(num)) {
+            positions.push(c)
+          }
+        }
+
+        if (positions.length >= 2 && positions.length <= 3) {
+          const boxCol = Math.floor(positions[0] / 3)
+          const allInSameBox = positions.every(c => Math.floor(c / 3) === boxCol)
+
+          if (allInSameBox) {
+            const boxRow = Math.floor(r / 3)
+            const startRow = boxRow * 3
+            const startCol = boxCol * 3
+
+            let canEliminate = false
+            for (let i = startRow; i < startRow + 3; i++) {
+              if (i !== r) {
+                for (let j = startCol; j < startCol + 3; j++) {
+                  if (board[i][j] === 0 && candidates[i][j].includes(num)) {
+                    canEliminate = true
+                    break
+                  }
+                }
+                if (canEliminate) break
+              }
+            }
+
+            if (canEliminate) {
+              for (const col of positions) {
+                if (solution[r][col] === num && candidates[r][col].includes(num)) {
+                  const otherCandidates = candidates[r][col].filter(n => n !== num)
+                  return {
+                    row: r,
+                    col: col,
+                    value: num,
+                    technique: this.TECHNIQUES.BOX_LINE_REDUCTION,
+                    reason: `观察第${r + 1}行：数字 ${num} 的候选位置都在第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的宫格中。这意味着 ${num} 必然在这个宫格的这一行中，因此可以排除这个宫格中其他行的 ${num}。排除后，第${r + 1}行、第${col + 1}列只剩下 ${num} 这一个选择${otherCandidates.length > 0 ? '（已排除候选数：' + otherCandidates.join('、') + '）' : ''}。`,
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      for (let c = 0; c < 9; c++) {
+        const positions = []
+        for (let r = 0; r < 9; r++) {
+          if (board[r][c] === 0 && candidates[r][c].includes(num)) {
+            positions.push(r)
+          }
+        }
+
+        if (positions.length >= 2 && positions.length <= 3) {
+          const boxRow = Math.floor(positions[0] / 3)
+          const allInSameBox = positions.every(r => Math.floor(r / 3) === boxRow)
+
+          if (allInSameBox) {
+            const boxCol = Math.floor(c / 3)
+            const startRow = boxRow * 3
+            const startCol = boxCol * 3
+
+            let canEliminate = false
+            for (let i = startRow; i < startRow + 3; i++) {
+              for (let j = startCol; j < startCol + 3; j++) {
+                if (j !== c && board[i][j] === 0 && candidates[i][j].includes(num)) {
+                  canEliminate = true
+                  break
+                }
+              }
+              if (canEliminate) break
+            }
+
+            if (canEliminate) {
+              for (const row of positions) {
+                if (solution[row][c] === num && candidates[row][c].includes(num)) {
+                  const otherCandidates = candidates[row][c].filter(n => n !== num)
+                  return {
+                    row: row,
+                    col: c,
+                    value: num,
+                    technique: this.TECHNIQUES.BOX_LINE_REDUCTION,
+                    reason: `观察第${c + 1}列：数字 ${num} 的候选位置都在第${boxRow * 3 + 1}-${boxRow * 3 + 3}行的宫格中。这意味着 ${num} 必然在这个宫格的这一列中，因此可以排除这个宫格中其他列的 ${num}。排除后，第${row + 1}行、第${c + 1}列只剩下 ${num} 这一个选择${otherCandidates.length > 0 ? '（已排除候选数：' + otherCandidates.join('、') + '）' : ''}。`,
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -348,199 +517,6 @@ class SudokuService {
               col: positions[0].col,
               value: num,
               reason: `观察第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格，数字 ${num} 只能出现在第${positions[0].row + 1}行、第${positions[0].col + 1}列这个位置。虽然这个格子可能有多个候选数，但数字 ${num} 是这个宫格中唯一能填入这个位置的数字。`,
-            }
-          }
-        }
-      }
-    }
-
-    return null
-  }
-
-  _findPointingPair(board, candidates) {
-    for (let num = 1; num <= 9; num++) {
-      for (let boxRow = 0; boxRow < 3; boxRow++) {
-        for (let boxCol = 0; boxCol < 3; boxCol++) {
-          const startRow = boxRow * 3
-          const startCol = boxCol * 3
-
-          const positions = []
-          for (let r = startRow; r < startRow + 3; r++) {
-            for (let c = startCol; c < startCol + 3; c++) {
-              if (board[r][c] === 0 && candidates[r][c].includes(num)) {
-                positions.push({ row: r, col: c })
-              }
-            }
-          }
-
-          if (positions.length >= 2 && positions.length <= 3) {
-            const sameRow = positions.every(p => p.row === positions[0].row)
-            const sameCol = positions.every(p => p.col === positions[0].col)
-
-            if (sameRow) {
-              const targetRow = positions[0].row
-              for (let c = 0; c < 9; c++) {
-                if (board[targetRow][c] === 0 && candidates[targetRow][c].includes(num)) {
-                  const inBox = c >= startCol && c < startCol + 3
-                  if (!inBox) {
-                    return {
-                      row: positions[0].row,
-                      col: positions[0].col,
-                      value: num,
-                      technique: this.TECHNIQUES.POINTING_PAIR,
-                      reason: `在第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格中，数字 ${num} 只能出现在第${targetRow + 1}行的某些位置。这意味着 ${num} 必然在这一行的这个宫格中，因此可以排除这一行中其他宫格里的 ${num}。`,
-                    }
-                  }
-                }
-              }
-            }
-
-            if (sameCol) {
-              const targetCol = positions[0].col
-              for (let r = 0; r < 9; r++) {
-                if (board[r][targetCol] === 0 && candidates[r][targetCol].includes(num)) {
-                  const inBox = r >= startRow && r < startRow + 3
-                  if (!inBox) {
-                    return {
-                      row: positions[0].row,
-                      col: positions[0].col,
-                      value: num,
-                      technique: this.TECHNIQUES.POINTING_PAIR,
-                      reason: `在第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格中，数字 ${num} 只能出现在第${targetCol + 1}列的某些位置。这意味着 ${num} 必然在这一列的这个宫格中，因此可以排除这一列中其他宫格里的 ${num}。`,
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return null
-  }
-
-  _findBoxLineReduction(board, candidates) {
-    for (let num = 1; num <= 9; num++) {
-      for (let r = 0; r < 9; r++) {
-        const positions = []
-        for (let c = 0; c < 9; c++) {
-          if (board[r][c] === 0 && candidates[r][c].includes(num)) {
-            positions.push(c)
-          }
-        }
-
-        if (positions.length >= 2 && positions.length <= 3) {
-          const boxCol = Math.floor(positions[0] / 3)
-          const allInSameBox = positions.every(c => Math.floor(c / 3) === boxCol)
-
-          if (allInSameBox) {
-            const boxRow = Math.floor(r / 3)
-            const startRow = boxRow * 3
-            const startCol = boxCol * 3
-
-            for (let i = startRow; i < startRow + 3; i++) {
-              if (i !== r) {
-                for (let j = startCol; j < startCol + 3; j++) {
-                  if (board[i][j] === 0 && candidates[i][j].includes(num)) {
-                    return {
-                      row: r,
-                      col: positions[0],
-                      value: num,
-                      technique: this.TECHNIQUES.BOX_LINE_REDUCTION,
-                      reason: `在第${r + 1}行中，数字 ${num} 只能出现在第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的宫格中。这意味着 ${num} 必然在这个宫格的这一行中，因此可以排除这个宫格中其他行的 ${num}。`,
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      for (let c = 0; c < 9; c++) {
-        const positions = []
-        for (let r = 0; r < 9; r++) {
-          if (board[r][c] === 0 && candidates[r][c].includes(num)) {
-            positions.push(r)
-          }
-        }
-
-        if (positions.length >= 2 && positions.length <= 3) {
-          const boxRow = Math.floor(positions[0] / 3)
-          const allInSameBox = positions.every(r => Math.floor(r / 3) === boxRow)
-
-          if (allInSameBox) {
-            const boxCol = Math.floor(c / 3)
-            const startRow = boxRow * 3
-            const startCol = boxCol * 3
-
-            for (let i = startRow; i < startRow + 3; i++) {
-              for (let j = startCol; j < startCol + 3; j++) {
-                if (j !== c && board[i][j] === 0 && candidates[i][j].includes(num)) {
-                  return {
-                    row: positions[0],
-                    col: c,
-                    value: num,
-                    technique: this.TECHNIQUES.BOX_LINE_REDUCTION,
-                    reason: `在第${c + 1}列中，数字 ${num} 只能出现在第${boxRow * 3 + 1}-${boxRow * 3 + 3}行的宫格中。这意味着 ${num} 必然在这个宫格的这一列中，因此可以排除这个宫格中其他列的 ${num}。`,
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return null
-  }
-
-  _findNakedPair(board, candidates) {
-    for (let r = 0; r < 9; r++) {
-      const pairs = []
-      for (let c = 0; c < 9; c++) {
-        if (board[r][c] === 0 && candidates[r][c].length === 2) {
-          pairs.push({ col: c, nums: [...candidates[r][c]].sort() })
-        }
-      }
-
-      for (let i = 0; i < pairs.length; i++) {
-        for (let j = i + 1; j < pairs.length; j++) {
-          if (pairs[i].nums[0] === pairs[j].nums[0] &&
-              pairs[i].nums[1] === pairs[j].nums[1]) {
-            const [a, b] = pairs[i].nums
-            return {
-              row: r,
-              col: pairs[i].col,
-              value: a,
-              technique: this.TECHNIQUES.NAKED_PAIR,
-              reason: `在第${r + 1}行中，第${pairs[i].col + 1}列和第${pairs[j].col + 1}列这两个格子有着完全相同的候选数：${a}和${b}。这是一个"裸对"，意味着这两个数字只能在这两个格子中。因此，可以排除这一行中其他格子的候选数 ${a} 和 ${b}。`,
-            }
-          }
-        }
-      }
-    }
-
-    for (let c = 0; c < 9; c++) {
-      const pairs = []
-      for (let r = 0; r < 9; r++) {
-        if (board[r][c] === 0 && candidates[r][c].length === 2) {
-          pairs.push({ row: r, nums: [...candidates[r][c]].sort() })
-        }
-      }
-
-      for (let i = 0; i < pairs.length; i++) {
-        for (let j = i + 1; j < pairs.length; j++) {
-          if (pairs[i].nums[0] === pairs[j].nums[0] &&
-              pairs[i].nums[1] === pairs[j].nums[1]) {
-            const [a, b] = pairs[i].nums
-            return {
-              row: pairs[i].row,
-              col: c,
-              value: a,
-              technique: this.TECHNIQUES.NAKED_PAIR,
-              reason: `在第${c + 1}列中，第${pairs[i].row + 1}行和第${pairs[j].row + 1}行这两个格子有着完全相同的候选数：${a}和${b}。这是一个"裸对"，意味着这两个数字只能在这两个格子中。因此，可以排除这一列中其他格子的候选数 ${a} 和 ${b}。`,
             }
           }
         }
