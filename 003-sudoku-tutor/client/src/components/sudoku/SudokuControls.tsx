@@ -2,43 +2,54 @@ import React from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   setNoteMode,
-  setCellValue,
-  clearCell,
+  setCellValueWithHistory,
+  toggleNoteWithHistory,
+  clearCellWithHistory,
+  undo,
+  redo,
   Difficulty,
   setDifficulty,
   Hint,
 } from '@/features/sudoku/sudokuSlice'
-import { pushAction } from '@/features/history/historySlice'
 import { RootState } from '@/app/store'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Pencil, Eraser, RotateCcw, RotateCw, Lightbulb, Trash2 } from 'lucide-react'
 
 interface SudokuControlsProps {
   onNewGame: (difficulty: Difficulty) => void
   onHint: () => void
-  onUndo: () => void
-  onRedo: () => void
   onReset: () => void
   hint: Hint | null
-  canUndo: boolean
-  canRedo: boolean
 }
 
 export const SudokuControls: React.FC<SudokuControlsProps> = ({
   onNewGame,
   onHint,
-  onUndo,
-  onRedo,
   onReset,
   hint,
-  canUndo,
-  canRedo,
 }) => {
   const dispatch = useDispatch()
-  const { isNoteMode, selectedCell, difficulty } = useSelector(
+  const { isNoteMode, selectedCell, difficulty, undoStack, redoStack } = useSelector(
     (state: RootState) => state.sudoku
   )
   const board = useSelector((state: RootState) => state.sudoku.board)
+
+  const getNumberCount = (num: number): number => {
+    let count = 0
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (board[r][c].value === num) {
+          count++
+        }
+      }
+    }
+    return count
+  }
+
+  const isNumberComplete = (num: number): boolean => {
+    return getNumberCount(num) >= 9
+  }
 
   const handleNumberClick = (num: number) => {
     if (!selectedCell) return
@@ -48,60 +59,24 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
     if (cell.isOriginal) return
 
     if (isNoteMode) {
-      const previousNotes = [...cell.notes]
-      const hasNote = cell.notes.includes(num)
-      
-      if (hasNote) {
-        dispatch({
-          type: 'sudoku/toggleNote',
-          payload: { row, col, value: num },
-        })
-      } else {
-        dispatch({
-          type: 'sudoku/toggleNote',
-          payload: { row, col, value: num },
-        })
-      }
-      
-      dispatch(pushAction({
-        row, col,
-        type: 'toggleNote',
-        value: num,
-        previousValue: cell.value,
-        previousNotes,
-        timestamp: Date.now(),
-      }))
+      dispatch(toggleNoteWithHistory({ row, col, value: num }))
     } else {
-      const previousValue = cell.value
-      dispatch(setCellValue({ row, col, value: num }))
-      dispatch(pushAction({
-        row, col,
-        type: 'setValue',
-        value: num,
-        previousValue,
-        previousNotes: [...cell.notes],
-        timestamp: Date.now(),
-      }))
+      dispatch(setCellValueWithHistory({ row, col, value: num }))
     }
   }
 
   const handleEraserClick = () => {
     if (!selectedCell) return
     const { row, col } = selectedCell
-    const cell = board[row][col]
+    dispatch(clearCellWithHistory({ row, col }))
+  }
 
-    if (cell.isOriginal) return
+  const handleUndo = () => {
+    dispatch(undo())
+  }
 
-    const previousValue = cell.value
-    const previousNotes = [...cell.notes]
-    dispatch(clearCell({ row, col }))
-    dispatch(pushAction({
-      row, col,
-      type: 'clearCell',
-      previousValue,
-      previousNotes,
-      timestamp: Date.now(),
-    }))
+  const handleRedo = () => {
+    dispatch(redo())
   }
 
   const difficulties: { label: string; value: Difficulty }[] = [
@@ -110,6 +85,9 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
     { label: '困难', value: 'hard' },
     { label: '专家', value: 'expert' },
   ]
+
+  const canUndo = undoStack.length > 0
+  const canRedo = redoStack.length > 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -147,7 +125,7 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
         <Button
           variant="outline"
           size="icon"
-          onClick={onUndo}
+          onClick={handleUndo}
           disabled={!canUndo}
           title="撤销"
         >
@@ -156,7 +134,7 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
         <Button
           variant="outline"
           size="icon"
-          onClick={onRedo}
+          onClick={handleRedo}
           disabled={!canRedo}
           title="重做"
         >
@@ -173,17 +151,35 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
       </div>
 
       <div className="grid grid-cols-5 gap-1">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-          <Button
-            key={num}
-            variant="outline"
-            className="h-10 text-lg font-bold"
-            onClick={() => handleNumberClick(num)}
-            disabled={!selectedCell}
-          >
-            {num}
-          </Button>
-        ))}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
+          const isComplete = isNumberComplete(num)
+          const count = getNumberCount(num)
+          return (
+            <Button
+              key={num}
+              variant="outline"
+              className={cn(
+                'h-10 text-lg font-bold relative',
+                isComplete && 'opacity-50 bg-gray-100 text-gray-400',
+              )}
+              onClick={() => handleNumberClick(num)}
+              disabled={!selectedCell || isComplete}
+              title={isComplete ? `数字 ${num} 已全部填完（共9个）` : `数字 ${num} 已填 ${count}/9 个`}
+            >
+              {num}
+              {!isComplete && count > 0 && (
+                <span className="absolute bottom-0.5 right-1 text-xs text-gray-400">
+                  {count}/9
+                </span>
+              )}
+              {isComplete && (
+                <span className="absolute bottom-0.5 right-1 text-xs text-green-500">
+                  ✓
+                </span>
+              )}
+            </Button>
+          )
+        })}
         <Button
           variant="outline"
           className="h-10 text-lg font-bold"
@@ -208,7 +204,7 @@ export const SudokuControls: React.FC<SudokuControlsProps> = ({
           <h4 className="font-semibold text-yellow-800 mb-1">
             {hint.technique}
           </h4>
-          <p className="text-sm text-yellow-700">{hint.reason}</p>
+          <p className="text-sm text-yellow-700 whitespace-pre-line">{hint.reason}</p>
           <p className="text-sm text-yellow-600 mt-1">
             位置: 第{hint.row + 1}行 第{hint.col + 1}列
             → 填入 {hint.value}

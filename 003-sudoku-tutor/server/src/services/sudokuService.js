@@ -219,17 +219,108 @@ class SudokuService {
     return false
   }
 
+  _getRowNumbers(board, row) {
+    return board[row].filter(v => v !== 0)
+  }
+
+  _getColNumbers(board, col) {
+    const nums = []
+    for (let r = 0; r < 9; r++) {
+      if (board[r][col] !== 0) {
+        nums.push(board[r][col])
+      }
+    }
+    return nums
+  }
+
+  _getBoxNumbers(board, row, col) {
+    const nums = []
+    const startRow = Math.floor(row / 3) * 3
+    const startCol = Math.floor(col / 3) * 3
+    for (let r = startRow; r < startRow + 3; r++) {
+      for (let c = startCol; c < startCol + 3; c++) {
+        if (board[r][c] !== 0) {
+          nums.push(board[r][c])
+        }
+      }
+    }
+    return nums
+  }
+
+  _buildNakedSingleReason(board, row, col, value, candidates) {
+    const rowNums = this._getRowNumbers(board, row)
+    const colNums = this._getColNumbers(board, col)
+    const boxNums = this._getBoxNumbers(board, row, col)
+
+    const allUsed = new Set([...rowNums, ...colNums, ...boxNums])
+    const allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    const excluded = allNumbers.filter(n => n !== value && allUsed.has(n))
+
+    let reason = `📍 目标位置：第${row + 1}行、第${col + 1}列\n\n`
+    
+    reason += `📚 先复习数独规则：\n`
+    reason += `   1-9 每个数字在「同一行」「同一列」「同一3×3宫格」中，只能出现一次！\n\n`
+    
+    reason += `🔍 现在开始分析这个格子能填什么数字：\n\n`
+    
+    reason += `第一步：看这一行（第${row + 1}行）\n`
+    if (rowNums.length > 0) {
+      reason += `   这一行已经有了：${rowNums.sort((a, b) => a - b).join('、')}\n`
+      reason += `   所以这一行不能再填：${rowNums.sort((a, b) => a - b).join('、')}\n`
+    } else {
+      reason += `   这一行目前是空的，暂时没有排除任何数字\n`
+    }
+    reason += `\n`
+    
+    reason += `第二步：看这一列（第${col + 1}列）\n`
+    if (colNums.length > 0) {
+      reason += `   这一列已经有了：${colNums.sort((a, b) => a - b).join('、')}\n`
+      reason += `   所以这一列不能再填：${colNums.sort((a, b) => a - b).join('、')}\n`
+    } else {
+      reason += `   这一列目前是空的，暂时没有排除任何数字\n`
+    }
+    reason += `\n`
+    
+    const boxRowLabel = `${Math.floor(row / 3) * 3 + 1}-${Math.floor(row / 3) * 3 + 3}行`
+    const boxColLabel = `${Math.floor(col / 3) * 3 + 1}-${Math.floor(col / 3) * 3 + 3}列`
+    reason += `第三步：看这个3×3宫格（${boxRowLabel}，${boxColLabel}）\n`
+    if (boxNums.length > 0) {
+      reason += `   这个宫格已经有了：${boxNums.sort((a, b) => a - b).join('、')}\n`
+      reason += `   所以这个宫格不能再填：${boxNums.sort((a, b) => a - b).join('、')}\n`
+    } else {
+      reason += `   这个宫格目前是空的，暂时没有排除任何数字\n`
+    }
+    reason += `\n`
+    
+    reason += `📊 综合以上三步：\n`
+    reason += `   总共被排除的数字有：${excluded.length > 0 ? excluded.sort((a, b) => a - b).join('、') : '无'}\n`
+    reason += `   1-9 这9个数字中，排除掉${excluded.length}个，还剩：${9 - excluded.length}个\n`
+    reason += `   剩下的那个数字就是：${value}\n\n`
+    
+    reason += `✅ 结论：这个格子只能填 ${value}！\n`
+    reason += `   （因为其他${excluded.length}个数字都被所在的行、列或宫格占用了）`
+
+    return reason
+  }
+
   getNextHint(board, solution) {
     const candidates = this.getAllCandidates(board)
 
     const nakedSingle = this._findNakedSingle(board, candidates)
     if (nakedSingle) {
+      const reason = this._buildNakedSingleReason(
+        board, 
+        nakedSingle.row, 
+        nakedSingle.col, 
+        nakedSingle.value,
+        candidates
+      )
       return {
         row: nakedSingle.row,
         col: nakedSingle.col,
         value: nakedSingle.value,
         technique: this.TECHNIQUES.NAKED_SINGLE,
-        reason: `第${nakedSingle.row + 1}行、第${nakedSingle.col + 1}列这个格子中，通过分析行、列和3×3宫格中已有的数字，发现只有 ${nakedSingle.value} 这一个数字可以填入。这是最简单的解题技巧。`,
+        reason,
       }
     }
 
@@ -461,6 +552,112 @@ class SudokuService {
     return null
   }
 
+  _buildHiddenSingleReason(board, row, col, value, candidates, scopeType, scopeIndex) {
+    const cellCandidates = candidates[row][col]
+    const otherCandidates = cellCandidates.filter(n => n !== value)
+
+    let reason = `📍 目标位置：第${row + 1}行、第${col + 1}列\n\n`
+    
+    reason += `💡 这是一个「隐藏唯一数」，让我来解释什么是隐藏唯一数：\n`
+    reason += `   一个格子可能有多个候选数（看起来可以填好几个数字），\n`
+    reason += `   但如果从「所在的行/列/宫格」的角度来看，\n`
+    reason += `   某个数字「只能填在这个格子」，那这个数字就是「隐藏唯一数」！\n\n`
+    
+    if (scopeType === 'row') {
+      const rowNums = this._getRowNumbers(board, scopeIndex)
+      reason += `🔍 现在来看第${scopeIndex + 1}行：\n`
+      reason += `   这一行已经有了：${rowNums.length > 0 ? rowNums.sort((a, b) => a - b).join('、') : '（空）'}\n`
+      reason += `   根据数独规则，这一行必须有数字 ${value}\n`
+      reason += `   我来检查这一行的所有空格，看看 ${value} 能填在哪里...\n\n`
+      
+      reason += `📋 逐个检查第${scopeIndex + 1}行的9个格子：\n`
+      for (let c = 0; c < 9; c++) {
+        if (board[scopeIndex][c] !== 0) {
+          reason += `   第${scopeIndex + 1}行、第${c + 1}列：已有数字 ${board[scopeIndex][c]}，跳过\n`
+        } else if (!candidates[scopeIndex][c].includes(value)) {
+          reason += `   第${scopeIndex + 1}行、第${c + 1}列：所在的列或宫格已有 ${value}，不能填\n`
+        } else if (c === col) {
+          reason += `   第${scopeIndex + 1}行、第${c + 1}列：✅ 这里可以填 ${value}！\n`
+        } else {
+          reason += `   第${scopeIndex + 1}行、第${c + 1}列：所在的列或宫格已有 ${value}，不能填\n`
+        }
+      }
+      reason += `\n`
+      
+      reason += `📊 分析结果：\n`
+      reason += `   第${scopeIndex + 1}行中，能填 ${value} 的位置只有「第${row + 1}行、第${col + 1}列」这一个！\n`
+      
+    } else if (scopeType === 'col') {
+      const colNums = this._getColNumbers(board, scopeIndex)
+      reason += `🔍 现在来看第${scopeIndex + 1}列：\n`
+      reason += `   这一列已经有了：${colNums.length > 0 ? colNums.sort((a, b) => a - b).join('、') : '（空）'}\n`
+      reason += `   根据数独规则，这一列必须有数字 ${value}\n`
+      reason += `   我来检查这一列的所有空格，看看 ${value} 能填在哪里...\n\n`
+      
+      reason += `📋 逐个检查第${scopeIndex + 1}列的9个格子：\n`
+      for (let r = 0; r < 9; r++) {
+        if (board[r][scopeIndex] !== 0) {
+          reason += `   第${r + 1}行、第${scopeIndex + 1}列：已有数字 ${board[r][scopeIndex]}，跳过\n`
+        } else if (!candidates[r][scopeIndex].includes(value)) {
+          reason += `   第${r + 1}行、第${scopeIndex + 1}列：所在的行或宫格已有 ${value}，不能填\n`
+        } else if (r === row) {
+          reason += `   第${r + 1}行、第${scopeIndex + 1}列：✅ 这里可以填 ${value}！\n`
+        } else {
+          reason += `   第${r + 1}行、第${scopeIndex + 1}列：所在的行或宫格已有 ${value}，不能填\n`
+        }
+      }
+      reason += `\n`
+      
+      reason += `📊 分析结果：\n`
+      reason += `   第${scopeIndex + 1}列中，能填 ${value} 的位置只有「第${row + 1}行、第${col + 1}列」这一个！\n`
+      
+    } else {
+      const boxRow = Math.floor(row / 3)
+      const boxCol = Math.floor(col / 3)
+      const startRow = boxRow * 3
+      const startCol = boxCol * 3
+      const boxNums = this._getBoxNumbers(board, row, col)
+      
+      reason += `🔍 现在来看这个3×3宫格（第${startRow + 1}-${startRow + 3}行，第${startCol + 1}-${startCol + 3}列）：\n`
+      reason += `   这个宫格已经有了：${boxNums.length > 0 ? boxNums.sort((a, b) => a - b).join('、') : '（空）'}\n`
+      reason += `   根据数独规则，这个宫格必须有数字 ${value}\n`
+      reason += `   我来检查这个宫格的所有空格，看看 ${value} 能填在哪里...\n\n`
+      
+      reason += `📋 逐个检查这个宫格的9个格子：\n`
+      for (let r = startRow; r < startRow + 3; r++) {
+        for (let c = startCol; c < startCol + 3; c++) {
+          if (board[r][c] !== 0) {
+            reason += `   第${r + 1}行、第${c + 1}列：已有数字 ${board[r][c]}，跳过\n`
+          } else if (!candidates[r][c].includes(value)) {
+            reason += `   第${r + 1}行、第${c + 1}列：所在的行或列已有 ${value}，不能填\n`
+          } else if (r === row && c === col) {
+            reason += `   第${r + 1}行、第${c + 1}列：✅ 这里可以填 ${value}！\n`
+          } else {
+            reason += `   第${r + 1}行、第${c + 1}列：所在的行或列已有 ${value}，不能填\n`
+          }
+        }
+      }
+      reason += `\n`
+      
+      reason += `📊 分析结果：\n`
+      reason += `   这个3×3宫格中，能填 ${value} 的位置只有「第${row + 1}行、第${col + 1}列」这一个！\n`
+    }
+    
+    reason += `\n`
+    if (otherCandidates.length > 0) {
+      reason += `💡 有趣的细节：\n`
+      reason += `   这个格子（第${row + 1}行、第${col + 1}列）的候选数有：${cellCandidates.join('、')}\n`
+      reason += `   看起来可以填 ${cellCandidates.length} 个数字\n`
+      reason += `   但从「${scopeType === 'row' ? '行' : scopeType === 'col' ? '列' : '宫格'}」的角度来看：\n`
+      reason += `   数字 ${value} 只能填在这个格子！\n`
+      reason += `   所以 ${value} 是「隐藏」在候选数中的唯一解！\n\n`
+    }
+    
+    reason += `✅ 结论：这个格子应该填 ${value}！`
+
+    return reason
+  }
+
   _findHiddenSingle(board, candidates) {
     for (let num = 1; num <= 9; num++) {
       for (let r = 0; r < 9; r++) {
@@ -471,11 +668,14 @@ class SudokuService {
           }
         }
         if (positions.length === 1) {
+          const reason = this._buildHiddenSingleReason(
+            board, r, positions[0], num, candidates, 'row', r
+          )
           return {
             row: r,
             col: positions[0],
             value: num,
-            reason: `观察第${r + 1}行，数字 ${num} 只能出现在第${positions[0] + 1}列这个位置（其他位置要么已填数，要么不能填 ${num}）。虽然这个格子可能有多个候选数，但数字 ${num} 是这一行中唯一能填入这个位置的数字。`,
+            reason,
           }
         }
       }
@@ -488,11 +688,14 @@ class SudokuService {
           }
         }
         if (positions.length === 1) {
+          const reason = this._buildHiddenSingleReason(
+            board, positions[0], c, num, candidates, 'col', c
+          )
           return {
             row: positions[0],
             col: c,
             value: num,
-            reason: `观察第${c + 1}列，数字 ${num} 只能出现在第${positions[0] + 1}行这个位置（其他位置要么已填数，要么不能填 ${num}）。虽然这个格子可能有多个候选数，但数字 ${num} 是这一列中唯一能填入这个位置的数字。`,
+            reason,
           }
         }
       }
@@ -512,11 +715,14 @@ class SudokuService {
           }
 
           if (positions.length === 1) {
+            const reason = this._buildHiddenSingleReason(
+              board, positions[0].row, positions[0].col, num, candidates, 'box', boxRow * 3 + boxCol
+            )
             return {
               row: positions[0].row,
               col: positions[0].col,
               value: num,
-              reason: `观察第${boxRow * 3 + 1}-${boxRow * 3 + 3}行、第${boxCol * 3 + 1}-${boxCol * 3 + 3}列的3×3宫格，数字 ${num} 只能出现在第${positions[0].row + 1}行、第${positions[0].col + 1}列这个位置。虽然这个格子可能有多个候选数，但数字 ${num} 是这个宫格中唯一能填入这个位置的数字。`,
+              reason,
             }
           }
         }

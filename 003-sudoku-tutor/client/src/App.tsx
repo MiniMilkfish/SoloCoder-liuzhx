@@ -10,9 +10,6 @@ import {
   setDifficulty,
 } from './features/sudoku/sudokuSlice'
 import {
-  undo,
-  redo,
-  resetCurrentActions,
   saveGame,
 } from './features/history/historySlice'
 import { RootState } from './app/store'
@@ -93,10 +90,10 @@ const buildReplayBoard = (game: GameRecord, step: number): BoardState => {
 
 function App() {
   const dispatch = useDispatch()
-  const { board, isComplete, currentHint, difficulty, solution } = useSelector(
+  const { board, isComplete, currentHint, difficulty, solution, undoStack } = useSelector(
     (state: RootState) => state.sudoku
   )
-  const { currentActions, redoStack, currentReplay } = useSelector(
+  const { currentReplay } = useSelector(
     (state: RootState) => state.history
   )
   const [elapsedTime, setElapsedTime] = useState(0)
@@ -119,7 +116,6 @@ function App() {
           })
         )
         dispatch(setDifficulty(newDifficulty))
-        dispatch(resetCurrentActions())
         setElapsedTime(0)
         setIsTimerRunning(true)
       }
@@ -128,7 +124,6 @@ function App() {
       const fallback = generateSampleBoard()
       dispatch(setBoard(fallback))
       dispatch(setDifficulty(newDifficulty))
-      dispatch(resetCurrentActions())
       setElapsedTime(0)
       setIsTimerRunning(true)
       setError(err instanceof Error ? err.message : '使用本地数独数据')
@@ -170,17 +165,8 @@ function App() {
     }
   }, [dispatch, board, solution])
 
-  const handleUndo = useCallback(() => {
-    dispatch(undo())
-  }, [dispatch])
-
-  const handleRedo = useCallback(() => {
-    dispatch(redo())
-  }, [dispatch])
-
   const handleReset = useCallback(() => {
     dispatch(resetGame())
-    dispatch(resetCurrentActions())
     setElapsedTime(0)
     setIsTimerRunning(true)
   }, [dispatch])
@@ -220,12 +206,12 @@ function App() {
           duration: elapsedTime * 1000,
           board: originalBoard,
           solution,
-          actions: currentActions,
+          actions: undoStack,
           isComplete: true,
         })
       )
     }
-  }, [isComplete, isTimerRunning, elapsedTime, currentActions, difficulty, dispatch, solution, board])
+  }, [isComplete, isTimerRunning, elapsedTime, undoStack, difficulty, dispatch, solution, board])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -313,12 +299,8 @@ function App() {
                   <SudokuControls
                     onNewGame={handleNewGame}
                     onHint={handleHint}
-                    onUndo={handleUndo}
-                    onRedo={handleRedo}
                     onReset={handleReset}
                     hint={currentHint}
-                    canUndo={currentActions.length > 0}
-                    canRedo={redoStack.length > 0}
                   />
                 )}
 

@@ -2,12 +2,11 @@ import React, { useCallback, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   setSelectedCell,
-  setCellValue,
-  toggleNote,
-  clearCell,
+  setCellValueWithHistory,
+  toggleNoteWithHistory,
+  clearCellWithHistory,
   BoardState,
 } from '@/features/sudoku/sudokuSlice'
-import { pushAction } from '@/features/history/historySlice'
 import { RootState } from '@/app/store'
 import { cn } from '@/lib/utils'
 
@@ -72,40 +71,13 @@ export const SudokuBoard: React.FC<SudokuBoardProps> = ({ board, disabled = fals
       const value = parseInt(e.key)
       
       if (isNoteMode) {
-        const previousNotes = [...cell.notes]
-        dispatch(toggleNote({ row, col, value }))
-        dispatch(pushAction({
-          row, col,
-          type: 'toggleNote',
-          value,
-          previousValue: cell.value,
-          previousNotes,
-          timestamp: Date.now(),
-        }))
+        dispatch(toggleNoteWithHistory({ row, col, value }))
       } else {
-        const previousValue = cell.value
-        dispatch(setCellValue({ row, col, value }))
-        dispatch(pushAction({
-          row, col,
-          type: 'setValue',
-          value,
-          previousValue,
-          previousNotes: [...cell.notes],
-          timestamp: Date.now(),
-        }))
+        dispatch(setCellValueWithHistory({ row, col, value }))
       }
       e.preventDefault()
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
-      const previousValue = cell.value
-      const previousNotes = [...cell.notes]
-      dispatch(clearCell({ row, col }))
-      dispatch(pushAction({
-        row, col,
-        type: 'clearCell',
-        previousValue,
-        previousNotes,
-        timestamp: Date.now(),
-      }))
+      dispatch(clearCellWithHistory({ row, col }))
       e.preventDefault()
     } else if (e.key === 'ArrowUp' && row > 0) {
       dispatch(setSelectedCell({ row: row - 1, col }))
@@ -134,19 +106,33 @@ export const SudokuBoard: React.FC<SudokuBoardProps> = ({ board, disabled = fals
     const isRelated = isRelatedCell(row, col)
     const hasSameValue = isSameValue(row, col)
 
-    let borderRight = 'border-r border-gray-300'
-    let borderBottom = 'border-b border-gray-300'
+    const isBoxBorderLeft = col === 0 || col % 3 === 0
+    const isBoxBorderTop = row === 0 || row % 3 === 0
+    const isBoxBorderRight = col === 8 || (col + 1) % 3 === 0
+    const isBoxBorderBottom = row === 8 || (row + 1) % 3 === 0
 
-    if ((col + 1) % 3 === 0 && col !== 8) {
-      borderRight = 'border-r-2 border-r-gray-800'
+    let borderLeft = isBoxBorderLeft ? 'border-l-2 border-l-black' : 'border-l border-gray-300'
+    let borderTop = isBoxBorderTop ? 'border-t-2 border-t-black' : 'border-t border-gray-300'
+    let borderRight = isBoxBorderRight ? 'border-r-2 border-r-black' : 'border-r border-gray-300'
+    let borderBottom = isBoxBorderBottom ? 'border-b-2 border-b-black' : 'border-b border-gray-300'
+
+    if (col === 0) {
+      borderLeft = 'border-l-4 border-l-black'
     }
-    if ((row + 1) % 3 === 0 && row !== 8) {
-      borderBottom = 'border-b-2 border-b-gray-800'
+    if (row === 0) {
+      borderTop = 'border-t-4 border-t-black'
+    }
+    if (col === 8) {
+      borderRight = 'border-r-4 border-r-black'
+    }
+    if (row === 8) {
+      borderBottom = 'border-b-4 border-b-black'
     }
 
     return cn(
       'w-12 h-12 flex items-center justify-center cursor-pointer select-none transition-all duration-150 relative',
-      'border-l border-t border-gray-300',
+      borderLeft,
+      borderTop,
       borderRight,
       borderBottom,
       isSelected && 'bg-blue-200 ring-2 ring-blue-500',
