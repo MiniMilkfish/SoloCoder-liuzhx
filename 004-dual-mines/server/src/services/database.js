@@ -1,37 +1,62 @@
-import Database from 'better-sqlite3';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, '../../data/minesweeper.db');
+const dataDir = path.join(__dirname, '../../data');
+const dbPath = path.join(dataDir, 'minesweeper.json');
 
-let db;
+let db = {
+  users: []
+};
 
 export function initDatabase() {
-  db = new Database(dbPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
   
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      nickname TEXT UNIQUE NOT NULL,
-      wins INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_nickname ON users(nickname);
-  `);
+  if (fs.existsSync(dbPath)) {
+    try {
+      const data = fs.readFileSync(dbPath, 'utf-8');
+      db = JSON.parse(data);
+      console.log('Database loaded from:', dbPath);
+      console.log(`现有用户数: ${db.users.length}`);
+    } catch (error) {
+      console.error('Failed to load database:', error);
+      db = { users: [] };
+    }
+  } else {
+    db = { users: [] };
+    saveDatabase();
+    console.log('New database created at:', dbPath);
+  }
   
-  console.log('Database initialized at:', dbPath);
   return db;
 }
 
+function saveDatabase() {
+  try {
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(dbPath, JSON.stringify(db, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to save database:', error);
+  }
+}
+
+function getCurrentTime() {
+  return new Date().toISOString();
+}
+
 export function getOrCreateUser(nickname) {
-  const existingUser = db.prepare('SELECT * FROM users WHERE nickname = ?').get(nickname);
+  const existingUser = db.users.find(u => u.nickname === nickname);
   
   if (existingUser) {
+    console.log(`找到现有用户: ${nickname}, 胜场数: ${existingUser.wins}`);
     return {
       id: existingUser.id,
       nickname: existingUser.nickname,
@@ -39,11 +64,19 @@ export function getOrCreateUser(nickname) {
     };
   }
   
-  const id = crypto.randomUUID();
-  db.prepare(`
-    INSERT INTO users (id, nickname, wins, created_at, updated_at)
-    VALUES (?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-  `).run(id, nickname);
+  const id = uuidv4();
+  const newUser = {
+    id,
+    nickname,
+    wins: 0,
+    created_at: getCurrentTime(),
+    updated_at: getCurrentTime(),
+  };
+  
+  db.users.push(newUser);
+  saveDatabase();
+  
+  console.log(`创建新用户: ${nickname}, ID: ${id}`);
   
   return {
     id,
@@ -53,15 +86,18 @@ export function getOrCreateUser(nickname) {
 }
 
 export function updateUserWins(nickname, wins) {
-  db.prepare(`
-    UPDATE users 
-    SET wins = ?, updated_at = CURRENT_TIMESTAMP 
-    WHERE nickname = ?
-  `).run(wins, nickname);
+  const userIndex = db.users.findIndex(u => u.nickname === nickname);
+  
+  if (userIndex !== -1) {
+    db.users[userIndex].wins = wins;
+    db.users[userIndex].updated_at = getCurrentTime();
+    saveDatabase();
+    console.log(`更新用户 ${nickname} 胜场数为: ${wins}`);
+  }
 }
 
 export function getUserByNickname(nickname) {
-  const user = db.prepare('SELECT * FROM users WHERE nickname = ?').get(nickname);
+  const user = db.users.find(u => u.nickname === nickname);
   if (!user) return null;
   return {
     id: user.id,
