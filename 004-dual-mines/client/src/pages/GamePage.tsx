@@ -220,6 +220,15 @@ export const GamePage: React.FC<GamePageProps> = ({
     });
     cleanupHandlers.push(unbindGameStarted);
 
+    const unbindTimeUpdated = socketService.on('timeUpdated', (data: { timeRemaining: number; currentPlayerId: string }) => {
+      setRoomState(prev => ({
+        ...prev,
+        timeRemaining: data.timeRemaining,
+        currentPlayerId: data.currentPlayerId,
+      }));
+    });
+    cleanupHandlers.push(unbindTimeUpdated);
+
     const unbindCellRevealed = socketService.on('cellRevealed', (data: { revealed: unknown[]; nextPlayerId: string; roomState: GameRoom }) => {
       console.log('格子揭开:', data.revealed);
       setRoomState(data.roomState);

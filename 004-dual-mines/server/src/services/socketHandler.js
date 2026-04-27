@@ -432,19 +432,26 @@ export function setupSocketHandlers(io) {
   
   setInterval(() => {
     for (const [roomId, room] of rooms.entries()) {
-      if (room.status === 'playing' && room.timeRemaining <= 0) {
-        const result = handleTimeout(roomId);
-        if (result) {
-          const roomState = getPublicRoomState(room);
-          io.to(roomId).emit('gameEnded', {
-            winner: result.winner,
-            winnerNickname: result.winnerNickname,
-            loser: result.loser,
-            reason: result.reason,
-            roomState,
-          });
-          
-          console.log(`房间 ${roomId} 超时结束 - 获胜者: ${result.winnerNickname}, 失败者: ${result.loser}`);
+      if (room.status === 'playing') {
+        io.to(roomId).emit('timeUpdated', {
+          timeRemaining: room.timeRemaining,
+          currentPlayerId: room.currentPlayerId,
+        });
+        
+        if (room.timeRemaining <= 0) {
+          const result = handleTimeout(roomId);
+          if (result) {
+            const roomState = getPublicRoomState(room);
+            io.to(roomId).emit('gameEnded', {
+              winner: result.winner,
+              winnerNickname: result.winnerNickname,
+              loser: result.loser,
+              reason: result.reason,
+              roomState,
+            });
+            
+            console.log(`房间 ${roomId} 超时结束 - 获胜者: ${result.winnerNickname}, 失败者: ${result.loser}`);
+          }
         }
       }
     }

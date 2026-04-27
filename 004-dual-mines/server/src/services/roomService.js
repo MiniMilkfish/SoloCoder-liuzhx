@@ -183,11 +183,6 @@ export function startGame(roomId) {
     }
     
     room.timeRemaining--;
-    if (room.timeRemaining <= 0) {
-      room.status = 'ended';
-      clearInterval(room.timer);
-      room.timer = null;
-    }
   }, 1000);
   
   console.log(`房间 ${roomId} 游戏开始，模式: ${room.mode}`);
