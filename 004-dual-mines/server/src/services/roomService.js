@@ -200,7 +200,8 @@ export function playerReady(roomId, socketId) {
   if (!room) return { success: false, error: '房间不存在' };
   
   if (room.players[socketId]) {
-    room.players[socketId].isReady = true;
+    room.players[socketId].isReady = !room.players[socketId].isReady;
+    console.log(`玩家 ${room.players[socketId].nickname} 准备状态切换为: ${room.players[socketId].isReady}`);
   }
   
   return { success: true };
@@ -238,16 +239,25 @@ export function clickCell(roomId, socketId, row, col) {
     const winnerIndex = playerIds.indexOf(socketId) === 0 ? 1 : 0;
     const winnerId = playerIds[winnerIndex];
     
+    let winnerNickname = '';
     if (room.players[winnerId]) {
+      winnerNickname = room.players[winnerId].nickname;
       room.players[winnerId].wins++;
-      updateUserWins(room.players[winnerId].nickname, room.players[winnerId].wins);
+      updateUserWins(winnerNickname, room.players[winnerId].wins);
     }
+    
+    Object.values(room.players).forEach(p => {
+      p.isReady = false;
+    });
+    
+    console.log(`房间 ${roomId} 游戏结束 - 踩到地雷，获胜者: ${winnerNickname}`);
     
     return {
       success: true,
       revealed: result.revealed,
       gameEnded: true,
       winner: winnerId,
+      winnerNickname,
       reason: '踩到地雷',
     };
   }
@@ -259,16 +269,25 @@ export function clickCell(roomId, socketId, row, col) {
       room.timer = null;
     }
     
+    let winnerNickname = '';
     if (room.players[socketId]) {
+      winnerNickname = room.players[socketId].nickname;
       room.players[socketId].wins++;
-      updateUserWins(room.players[socketId].nickname, room.players[socketId].wins);
+      updateUserWins(winnerNickname, room.players[socketId].wins);
     }
+    
+    Object.values(room.players).forEach(p => {
+      p.isReady = false;
+    });
+    
+    console.log(`房间 ${roomId} 游戏结束 - 安全完成所有格子，获胜者: ${winnerNickname}`);
     
     return {
       success: true,
       revealed: result.revealed,
       gameEnded: true,
       winner: socketId,
+      winnerNickname,
       reason: '安全完成所有格子',
     };
   }
@@ -400,10 +419,16 @@ export function handleTimeout(roomId) {
   const winnerIndex = playerIds.indexOf(room.currentPlayerId) === 0 ? 1 : 0;
   const winnerId = playerIds[winnerIndex];
   
+  let winnerNickname = '';
   if (room.players[winnerId]) {
+    winnerNickname = room.players[winnerId].nickname;
     room.players[winnerId].wins++;
-    updateUserWins(room.players[winnerId].nickname, room.players[winnerId].wins);
+    updateUserWins(winnerNickname, room.players[winnerId].wins);
   }
+  
+  Object.values(room.players).forEach(p => {
+    p.isReady = false;
+  });
   
   room.status = 'ended';
   if (room.timer) {
@@ -411,10 +436,11 @@ export function handleTimeout(roomId) {
     room.timer = null;
   }
   
-  console.log(`房间 ${roomId} 超时，玩家 ${room.currentPlayerId} 输了`);
+  console.log(`房间 ${roomId} 超时，获胜者: ${winnerNickname}`);
   
   return {
     winner: winnerId,
+    winnerNickname,
     loser: room.currentPlayerId,
     reason: '超时',
   };

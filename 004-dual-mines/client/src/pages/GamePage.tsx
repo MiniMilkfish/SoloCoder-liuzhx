@@ -22,6 +22,7 @@ interface GamePageProps {
 
 interface GameResult {
   winner: string | null;
+  winnerNickname: string | null;
   reason: string;
   show: boolean;
 }
@@ -36,7 +37,7 @@ export const GamePage: React.FC<GamePageProps> = ({
   const { theme, toggleTheme } = useTheme();
   const [player, setPlayer] = useState<Player>(initialPlayer);
   const [roomState, setRoomState] = useState<GameRoom>(initialRoomState);
-  const [gameResult, setGameResult] = useState<GameResult>({ winner: null, reason: '', show: false });
+  const [gameResult, setGameResult] = useState<GameResult>({ winner: null, winnerNickname: null, reason: '', show: false });
   const [notification, setNotification] = useState<string | null>(null);
 
   const mySocketId = socketService.getSocketId();
@@ -199,11 +200,12 @@ export const GamePage: React.FC<GamePageProps> = ({
     });
     cleanupHandlers.push(unbindCellFlagged);
 
-    const unbindGameEnded = socketService.on('gameEnded', (data: { winner: string; reason: string; roomState: GameRoom }) => {
-      console.log('游戏结束:', data.winner, data.reason);
+    const unbindGameEnded = socketService.on('gameEnded', (data: { winner: string; winnerNickname?: string; reason: string; roomState: GameRoom }) => {
+      console.log('游戏结束:', data.winner, data.winnerNickname, data.reason);
       setRoomState(data.roomState);
       setGameResult({
         winner: data.winner,
+        winnerNickname: data.winnerNickname || null,
         reason: data.reason,
         show: true,
       });
@@ -251,6 +253,9 @@ export const GamePage: React.FC<GamePageProps> = ({
   }, [showNotification]);
 
   const getWinnerNickname = () => {
+    if (gameResult.winnerNickname) {
+      return gameResult.winnerNickname;
+    }
     if (!gameResult.winner) return null;
     const winner = roomState.players[gameResult.winner];
     return winner?.nickname || '未知玩家';
@@ -380,7 +385,9 @@ export const GamePage: React.FC<GamePageProps> = ({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-center text-2xl">
-              {gameResult.winner === mySocketId ? (
+              {isSpectator ? (
+                <span className="text-primary">🎮 游戏结束</span>
+              ) : gameResult.winner === mySocketId ? (
                 <span className="text-green-500">🎉 你赢了！</span>
               ) : gameResult.winner ? (
                 <span className="text-red-500">💥 你输了</span>
@@ -398,7 +405,7 @@ export const GamePage: React.FC<GamePageProps> = ({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex justify-center">
-            {roomState.status === 'ended' && (
+            {roomState.status === 'ended' && !isSpectator && (
               <Button onClick={handleReady}>
                 再来一局
               </Button>

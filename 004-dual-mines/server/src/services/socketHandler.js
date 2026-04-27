@@ -214,11 +214,12 @@ export function setupSocketHandlers(io) {
         if (result.gameEnded) {
           io.to(roomId).emit('gameEnded', {
             winner: result.winner,
+            winnerNickname: result.winnerNickname,
             reason: result.reason,
             roomState,
           });
           
-          console.log(`房间 ${roomId} 游戏结束 - 获胜者: ${result.winner}, 原因: ${result.reason}`);
+          console.log(`房间 ${roomId} 游戏结束 - 获胜者: ${result.winnerNickname}, 原因: ${result.reason}`);
         } else {
           io.to(roomId).emit('cellRevealed', {
             revealed: result.revealed,
@@ -437,12 +438,13 @@ export function setupSocketHandlers(io) {
           const roomState = getPublicRoomState(room);
           io.to(roomId).emit('gameEnded', {
             winner: result.winner,
+            winnerNickname: result.winnerNickname,
             loser: result.loser,
             reason: result.reason,
             roomState,
           });
           
-          console.log(`房间 ${roomId} 超时结束 - 获胜者: ${result.winner}, 失败者: ${result.loser}`);
+          console.log(`房间 ${roomId} 超时结束 - 获胜者: ${result.winnerNickname}, 失败者: ${result.loser}`);
         }
       }
     }
