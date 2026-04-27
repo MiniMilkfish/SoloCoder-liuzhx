@@ -149,6 +149,7 @@ class SocketService {
     revealed?: CellState[];
     gameEnded?: boolean;
     winner?: string;
+    winnerNickname?: string;
     reason?: string;
     nextPlayerId?: string;
     roomState?: GameRoom;

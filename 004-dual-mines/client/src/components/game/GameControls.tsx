@@ -12,6 +12,7 @@ interface GameControlsProps {
   onStart: () => void;
   onInitResetVote: () => void;
   onVoteReset: (agree: boolean) => void;
+  onPlayAgain?: () => void;
   canStart: boolean;
 }
 
@@ -24,6 +25,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   onStart,
   onInitResetVote,
   onVoteReset,
+  onPlayAgain,
   canStart,
 }) => {
   if (role === 'spectator') {
@@ -85,7 +87,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
 
       {status === 'ended' && (
         <Button
-          onClick={onReady}
+          onClick={onPlayAgain || onReady}
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           再来一局

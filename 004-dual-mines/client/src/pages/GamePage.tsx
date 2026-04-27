@@ -85,6 +85,37 @@ export const GamePage: React.FC<GamePageProps> = ({
     }
   }, [roomId, isSpectator, mySocketId]);
 
+  const handlePlayAgain = useCallback(async () => {
+    if (isSpectator) return;
+    
+    setGameResult(prev => ({ ...prev, show: false }));
+    
+    const response = await socketService.playerReady(roomId);
+    if (response.success && response.roomState) {
+      setRoomState(response.roomState);
+      const myPlayer = response.roomState.players[mySocketId!];
+      if (myPlayer) {
+        setPlayer(myPlayer);
+      }
+      
+      const allReady = Object.values(response.roomState.players).every(p => p.isReady);
+      const playerCount = Object.keys(response.roomState.players).length;
+      
+      if (allReady && playerCount >= 2) {
+        showNotification('所有玩家已准备，开始新游戏...');
+        const startResponse = await socketService.startGame(roomId);
+        if (startResponse.success && startResponse.roomState) {
+          setRoomState(startResponse.roomState);
+          showNotification('游戏开始！');
+        } else {
+          showNotification(startResponse.error || '开始游戏失败');
+        }
+      } else {
+        showNotification('已准备，等待对方准备...');
+      }
+    }
+  }, [roomId, isSpectator, mySocketId, showNotification]);
+
   const handleStart = useCallback(async () => {
     if (isSpectator || !canStart) return;
     
@@ -107,6 +138,7 @@ export const GamePage: React.FC<GamePageProps> = ({
       if (response.gameEnded) {
         setGameResult({
           winner: response.winner || null,
+          winnerNickname: response.winnerNickname || null,
           reason: response.reason || '',
           show: true,
         });
@@ -347,6 +379,7 @@ export const GamePage: React.FC<GamePageProps> = ({
                 onStart={handleStart}
                 onInitResetVote={handleInitResetVote}
                 onVoteReset={handleVoteReset}
+                onPlayAgain={handlePlayAgain}
                 canStart={canStart}
               />
             </CardContent>
@@ -406,7 +439,7 @@ export const GamePage: React.FC<GamePageProps> = ({
           </DialogHeader>
           <DialogFooter className="flex justify-center">
             {roomState.status === 'ended' && !isSpectator && (
-              <Button onClick={handleReady}>
+              <Button onClick={handlePlayAgain}>
                 再来一局
               </Button>
             )}
