@@ -254,7 +254,7 @@ class Snake {
     }
 
     setNextDirection(newDir) {
-        if (newDir.x + this.direction.x === 0 && newDir.y + this.direction.y === 0) {
+        if (newDir.x + this.nextDirection.x === 0 && newDir.y + this.nextDirection.y === 0) {
             return;
         }
         this.nextDirection = { ...newDir };
@@ -964,6 +964,8 @@ class Game {
     }
 
     checkCollisions() {
+        const headCollisionPairs = [];
+        
         for (const snake of this.snakes) {
             if (!snake.alive) continue;
             
@@ -1007,18 +1009,33 @@ class Game {
             for (const otherSnake of this.snakes) {
                 if (otherSnake === snake || !otherSnake.alive) continue;
                 
-                if (otherSnake.containsPosition(head.x, head.y)) {
+                const isHeadCollision = otherSnake.head.x === head.x && otherSnake.head.y === head.y;
+                
+                if (isHeadCollision) {
+                    const pairKey = [snake.id, otherSnake.id].sort().join('-');
+                    if (!headCollisionPairs.includes(pairKey)) {
+                        headCollisionPairs.push(pairKey);
+                    }
+                } else if (otherSnake.containsPosition(head.x, head.y)) {
                     if (!snake.powerUps.invincible.active) {
-                        const isHeadCollision = otherSnake.head.x === head.x && otherSnake.head.y === head.y;
-                        
-                        if (isHeadCollision) {
-                            this.handleSnakeDeath(snake, '互相碰撞');
-                            this.handleSnakeDeath(otherSnake, '互相碰撞');
-                        } else {
-                            this.handleSnakeDeath(snake, '碰撞对方蛇身');
-                        }
+                        this.handleSnakeDeath(snake, '碰撞对方蛇身');
                     }
                 }
+            }
+        }
+        
+        for (const pairKey of headCollisionPairs) {
+            const [id1, id2] = pairKey.split('-').map(Number);
+            const snake1 = this.snakes.find(s => s.id === id1);
+            const snake2 = this.snakes.find(s => s.id === id2);
+            
+            if (!snake1 || !snake2 || !snake1.alive || !snake2.alive) continue;
+            
+            if (!snake1.powerUps.invincible.active) {
+                this.handleSnakeDeath(snake1, '互相碰撞');
+            }
+            if (!snake2.powerUps.invincible.active) {
+                this.handleSnakeDeath(snake2, '互相碰撞');
             }
         }
         
