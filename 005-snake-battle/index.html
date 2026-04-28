@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇对战 - Snake Battle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <!-- 开始菜单 -->
+        <div id="start-menu" class="menu-overlay active">
+            <h1 class="game-title">🐍 贪吃蛇对战 🐍</h1>
+            <div class="menu-buttons">
+                <button id="single-mode" class="menu-btn">单人模式</button>
+                <button id="multi-mode" class="menu-btn">双人对战</button>
+                <button id="leaderboard-btn" class="menu-btn">排行榜</button>
+            </div>
+            <div class="controls-info">
+                <h3>操作说明</h3>
+                <div class="player-controls">
+                    <div class="player1-info">
+                        <h4>玩家 1（蓝蛇）</h4>
+                        <p>W - 上 | A - 左 | S - 下 | D - 右</p>
+                    </div>
+                    <div class="player2-info">
+                        <h4>玩家 2（红蛇）</h4>
+                        <p>↑ - 上 | ← - 左 | ↓ - 下 | → - 右</p>
+                    </div>
+                </div>
+                <p class="pause-info">P / 空格 - 暂停游戏</p>
+            </div>
+        </div>
+
+        <!-- 排行榜 -->
+        <div id="leaderboard" class="menu-overlay">
+            <h2 class="menu-title">🏆 积分排行榜 🏆</h2>
+            <div class="leaderboard-content">
+                <div class="leaderboard-tabs">
+                    <button class="tab-btn active" data-mode="single">单人模式</button>
+                    <button class="tab-btn" data-mode="multi">双人模式</button>
+                </div>
+                <div id="single-leaderboard" class="leaderboard-list active"></div>
+                <div id="multi-leaderboard" class="leaderboard-list"></div>
+            </div>
+            <button id="back-to-menu" class="menu-btn">返回菜单</button>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="game-screen" class="game-screen hidden">
+            <!-- 分数显示 -->
+            <div class="score-display">
+                <div id="player1-score" class="player-score hidden">
+                    <span class="player-label">玩家 1</span>
+                    <span class="score-value">0</span>
+                </div>
+                <div id="player2-score" class="player-score hidden">
+                    <span class="player-label">玩家 2</span>
+                    <span class="score-value">0</span>
+                </div>
+                <div id="single-score" class="player-score">
+                    <span class="player-label">得分</span>
+                    <span class="score-value">0</span>
+                </div>
+            </div>
+
+            <!-- 游戏画布 -->
+            <div class="canvas-container">
+                <canvas id="game-canvas"></canvas>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="game-controls">
+                <button id="pause-btn" class="control-btn">暂停</button>
+                <button id="restart-btn" class="control-btn">重新开始</button>
+                <button id="quit-btn" class="control-btn">退出</button>
+            </div>
+        </div>
+
+        <!-- 暂停弹窗 -->
+        <div id="pause-overlay" class="menu-overlay hidden">
+            <div class="pause-content">
+                <h2 class="menu-title">⏸️ 游戏暂停 ⏸️</h2>
+                <div class="menu-buttons">
+                    <button id="resume-btn" class="menu-btn">继续游戏</button>
+                    <button id="restart-pause-btn" class="menu-btn">重新开始</button>
+                    <button id="quit-pause-btn" class="menu-btn">退出游戏</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div id="game-over-overlay" class="menu-overlay hidden">
+            <div class="game-over-content">
+                <h2 id="game-over-title" class="menu-title">游戏结束</h2>
+                <div id="game-over-scores" class="final-scores"></div>
+                <div class="menu-buttons">
+                    <button id="restart-gameover-btn" class="menu-btn">再来一局</button>
+                    <button id="quit-gameover-btn" class="menu-btn">返回菜单</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
