@@ -976,6 +976,17 @@ class Game {
                 if (!snake.powerUps.invincible.active) {
                     this.handleSnakeDeath(snake, '边界碰撞');
                     continue;
+                } else {
+                    if (head.x < 0) {
+                        head.x = CONFIG.GRID_COLS - 1;
+                    } else if (head.x >= CONFIG.GRID_COLS) {
+                        head.x = 0;
+                    }
+                    if (head.y < 0) {
+                        head.y = CONFIG.GRID_ROWS - 1;
+                    } else if (head.y >= CONFIG.GRID_ROWS) {
+                        head.y = 0;
+                    }
                 }
             }
             
