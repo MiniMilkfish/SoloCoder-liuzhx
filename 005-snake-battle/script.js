@@ -1,6 +1,6 @@
 /**
- * 贪吃蛇对战游�?- 核心逻辑
- * 支持单人和双人对战模�? */
+ * 贪吃蛇对战游戏- 核心逻辑
+ * 支持单人和双人对战模式 */
 
 // ==================== 游戏配置 ====================
 const CONFIG = {
@@ -128,7 +128,7 @@ class SoundManager {
     }
 }
 
-// ==================== 排行榜系�?====================
+// ==================== 排行榜系统====================
 class Leaderboard {
     constructor() {
         this.SINGLE_KEY = 'snake_battle_single';
@@ -172,7 +172,7 @@ class Leaderboard {
         const container = document.getElementById('single-leaderboard');
         
         if (scores.length === 0) {
-            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去创造历史吧�?/div>';
+            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去创造历史吧！/div>';
             return;
         }
         
@@ -195,7 +195,7 @@ class Leaderboard {
         const container = document.getElementById('multi-leaderboard');
         
         if (scores.length === 0) {
-            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去对战吧�?/div>';
+            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去对战吧！/div>';
             return;
         }
         
@@ -369,7 +369,7 @@ class Snake {
     }
 }
 
-// ==================== 食物�?====================
+// ==================== 食物类====================
 class Food {
     constructor(x, y) {
         this.x = x;
@@ -382,7 +382,7 @@ class Food {
     }
 }
 
-// ==================== 道具�?====================
+// ==================== 道具类====================
 class PowerUp {
     constructor(x, y, type) {
         this.x = x;
@@ -402,7 +402,7 @@ class PowerUp {
     }
 }
 
-// ==================== 渲染�?====================
+// ==================== 渲染器====================
 class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -1204,7 +1204,7 @@ class Game {
             const snake = this.snakes[0];
             title.textContent = '游戏结束';
             scoresContainer.innerHTML = `
-                <h3>最终得�?/h3>
+                <h3>最终得分/h3>
                 <div class="final-score-item">
                     <span class="player-name">得分</span>
                     <span class="final-score">${snake.score}</span>
@@ -1228,19 +1228,19 @@ class Game {
             if (winner) {
                 title.textContent = `${winner.name} 获胜！`;
             } else {
-                title.textContent = '平局�?;
+                title.textContent = '平局！';
             }
             
             scoresContainer.innerHTML = `
-                <h3>最终比�?/h3>
+                <h3>最终比分</h3>
                 <div class="final-score-item ${winner === snake1 ? 'winner' : ''}">
-                    <span class="player-name player1">${snake1.name} ${winner === snake1 ? '👑' : ''}</span>
-                    <span class="final-score">${snake1.score}</span>
-                </div>
-                <div class="final-score-item ${winner === snake2 ? 'winner' : ''}">
-                    <span class="player-name player2">${snake2.name} ${winner === snake2 ? '👑' : ''}</span>
-                    <span class="final-score">${snake2.score}</span>
-                </div>
+                <span class="player-name player1">${snake1.name} ${winner === snake1 ? '👑' : ''}</span>
+                <span class="final-score">${snake1.score}</span>
+            </div>
+            <div class="final-score-item ${winner === snake2 ? 'winner' : ''}">
+                <span class="player-name player2">${snake2.name} ${winner === snake2 ? '👑' : ''}</span>
+                <span class="final-score">${snake2.score}</span>
+            </div>
             `;
         }
         
@@ -1267,7 +1267,7 @@ class Game {
     }
 }
 
-// ==================== 初始化游�?====================
+// ==================== 初始化游戏====================
 document.addEventListener('DOMContentLoaded', () => {
     new Game();
 });
