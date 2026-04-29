@@ -1,7 +1,6 @@
 /**
- * 贪吃蛇对战游戏 - 核心逻辑
- * 支持单人和双人对战模式
- */
+ * 贪吃蛇对战游�?- 核心逻辑
+ * 支持单人和双人对战模�? */
 
 // ==================== 游戏配置 ====================
 const CONFIG = {
@@ -129,7 +128,7 @@ class SoundManager {
     }
 }
 
-// ==================== 排行榜系统 ====================
+// ==================== 排行榜系�?====================
 class Leaderboard {
     constructor() {
         this.SINGLE_KEY = 'snake_battle_single';
@@ -173,7 +172,7 @@ class Leaderboard {
         const container = document.getElementById('single-leaderboard');
         
         if (scores.length === 0) {
-            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去创造历史吧！</div>';
+            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去创造历史吧�?/div>';
             return;
         }
         
@@ -196,7 +195,7 @@ class Leaderboard {
         const container = document.getElementById('multi-leaderboard');
         
         if (scores.length === 0) {
-            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去对战吧！</div>';
+            container.innerHTML = '<div class="leaderboard-empty">暂无记录，快去对战吧�?/div>';
             return;
         }
         
@@ -370,7 +369,7 @@ class Snake {
     }
 }
 
-// ==================== 食物类 ====================
+// ==================== 食物�?====================
 class Food {
     constructor(x, y) {
         this.x = x;
@@ -383,7 +382,7 @@ class Food {
     }
 }
 
-// ==================== 道具类 ====================
+// ==================== 道具�?====================
 class PowerUp {
     constructor(x, y, type) {
         this.x = x;
@@ -403,7 +402,7 @@ class PowerUp {
     }
 }
 
-// ==================== 渲染器 ====================
+// ==================== 渲染�?====================
 class Renderer {
     constructor(canvas) {
         this.canvas = canvas;
@@ -590,7 +589,7 @@ class Renderer {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
-        let icon = '⚡';
+        let icon = '';
         switch (powerUp.type) {
             case POWERUP_TYPE.SPEED_UP:
                 icon = '⚡';
@@ -974,6 +973,16 @@ class Game {
             if (head.x < 0 || head.x >= CONFIG.GRID_COLS || 
                 head.y < 0 || head.y >= CONFIG.GRID_ROWS) {
                 if (!snake.powerUps.invincible.active) {
+                    if (head.x < 0) {
+                        head.x = 0;
+                    } else if (head.x >= CONFIG.GRID_COLS) {
+                        head.x = CONFIG.GRID_COLS - 1;
+                    }
+                    if (head.y < 0) {
+                        head.y = 0;
+                    } else if (head.y >= CONFIG.GRID_ROWS) {
+                        head.y = CONFIG.GRID_ROWS - 1;
+                    }
                     this.handleSnakeDeath(snake, '边界碰撞');
                     continue;
                 } else {
@@ -1195,7 +1204,7 @@ class Game {
             const snake = this.snakes[0];
             title.textContent = '游戏结束';
             scoresContainer.innerHTML = `
-                <h3>最终得分</h3>
+                <h3>最终得�?/h3>
                 <div class="final-score-item">
                     <span class="player-name">得分</span>
                     <span class="final-score">${snake.score}</span>
@@ -1219,11 +1228,11 @@ class Game {
             if (winner) {
                 title.textContent = `${winner.name} 获胜！`;
             } else {
-                title.textContent = '平局！';
+                title.textContent = '平局�?;
             }
             
             scoresContainer.innerHTML = `
-                <h3>最终比分</h3>
+                <h3>最终比�?/h3>
                 <div class="final-score-item ${winner === snake1 ? 'winner' : ''}">
                     <span class="player-name player1">${snake1.name} ${winner === snake1 ? '👑' : ''}</span>
                     <span class="final-score">${snake1.score}</span>
@@ -1258,7 +1267,8 @@ class Game {
     }
 }
 
-// ==================== 初始化游戏 ====================
+// ==================== 初始化游�?====================
 document.addEventListener('DOMContentLoaded', () => {
     new Game();
 });
+
